@@ -1,0 +1,12 @@
+{
+  "name": "git-object-visualizer",
+  "version": "0.1.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "gorhawk",
+  "license": "GPL-3.0"
+}
