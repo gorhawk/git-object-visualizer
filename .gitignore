@@ -1,3 +1,7 @@
 .idea/
 /node_modules
 npm-debug.log*
+
+./*.sh
+./*.gv
+./*.svg

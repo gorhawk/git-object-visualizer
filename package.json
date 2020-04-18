@@ -8,5 +8,11 @@
   },
   "keywords": [],
   "author": "gorhawk",
-  "license": "GPL-3.0"
+  "license": "GPL-3.0",
+  "devDependencies": {
+    "prettier": "^2.0.4"
+  },
+  "dependencies": {
+    "lodash": "^4.17.15"
+  }
 }

@@ -1,0 +1,178 @@
+const {
+    angles,
+    attr,
+    attributeList,
+    edge,
+    head8,
+    quote,
+    stmt,
+    table,
+    td,
+    tr,
+} = require("./dot_builders");
+const { truncate } = require("lodash/string");
+const { reduce } = require("lodash/collection");
+const { replace } = require("lodash/string");
+const { splitLines } = require("./utility");
+const { splitByWhitespace } = require("./utility");
+const { combineByKeys } = require("./utility");
+const { map } = require("lodash/collection");
+const { lines } = require("./dot_builders");
+const { compact } = require("lodash/array");
+
+const headPath = "refs/heads/";
+const tagPath = "refs/tags/";
+
+const TREE_TYPE = "tree";
+const PARENT_TYPE = "parent";
+
+const commitDependencyTypes = [TREE_TYPE, PARENT_TYPE];
+
+function mapLineToCommit(line) {
+    const [type, hash] = splitByWhitespace(line);
+    if (commitDependencyTypes.includes(type)) {
+        return { type, hash };
+    }
+}
+
+function mapLineToTree(line) {
+    const [mode, type, hash, filename] = splitByWhitespace(line);
+    return { type, hash, filename };
+}
+
+function mapLineToRef(line) {
+    const [hash, name] = splitByWhitespace(line);
+    return { hash, name };
+}
+
+function mapLineToObject(line) {
+    const [hash, type] = splitByWhitespace(line);
+    return { hash, type };
+}
+
+function mapRawCommit(rawCommit) {
+    const dependencies = compact(map(compact(splitLines(rawCommit)), mapLineToCommit));
+    return combineByKeys(dependencies, "type", "hash");
+}
+
+function mapAnnotatedTag(rawTag) {
+    const [rawMetadata, message] = rawTag.split("\n\n");
+    return reduce(
+        // the first 3 lines are: object, type, tag
+        map(splitLines(rawMetadata).slice(0, 3), line => {
+            const [key, value] = splitByWhitespace(line);
+            return { [key]: value };
+        }),
+        (acc, item) => ({ ...acc, ...item }),
+        { message: truncate(message.replace("\n", " ").trim()) }
+    );
+}
+
+const mapRawTree = rawTree => ({
+    children: compact(map(compact(splitLines(rawTree)), mapLineToTree)),
+});
+
+function mapBlobToStatement({ hash }) {
+    return stmt(
+        quote(hash),
+        attributeList(attr("label", quote(head8(hash))), attr("shape", "plaintext"))
+    );
+}
+
+function mapCommitToStatements({ hash, parent, tree }) {
+    const result = [
+        stmt(
+            quote(hash),
+            attributeList(
+                attr("label", quote(head8(hash))),
+                attr("style", "filled"),
+                attr("fillcolor", "gainsboro"),
+                attr("group", "commits")
+            )
+        ),
+        stmt(edge(quote(hash), tree)),
+    ];
+    if (parent) {
+        result.push(stmt(edge(quote(hash), parent)));
+    }
+    return result;
+}
+
+function mapAnnotatedTagsToStatements({ message, object, type, tag, hash }) {
+    return [
+        stmt(
+            quote(hash),
+            attributeList(
+                attr("label", quote(head8(hash) + "\n" + message)),
+                attr("shape", "rect"),
+                attr("style", "filled"),
+                attr("fillcolor", "wheat"),
+                attr("group", "tags")
+            )
+        ),
+        stmt(edge(quote(hash), object)),
+    ];
+}
+
+const mapTreeToStatements = ({ hash, children }) => {
+    const tableAttributes = [attr("border", 0), attr("cellborder", 1), attr("cellspacing", 0)];
+    const rows = lines(
+        tr(null, td(attr("colspan", 3), `tree ${head8(hash)}`)),
+        ...map(children, ({ type, hash, filename }) =>
+            tr(null, lines(td(null, type), td(null, head8(hash)), td(attr("port", hash), filename)))
+        )
+    );
+    const treeTable = angles(table(tableAttributes, rows));
+    const attributes = [attr("shape", "plain"), attr("label", treeTable), attr("group", "trees")];
+
+    const treeHash = hash;
+
+    return [
+        stmt(quote(treeHash), attributeList(...attributes)),
+        ...children.map(({ type, hash, filename }) => edge(quote(treeHash), hash)),
+    ];
+};
+
+const createRefMapper = ({ refBasePath, fillColor, shape, margin }) => ({ hash, name }) => {
+    return [
+        stmt(
+            quote(name),
+            attributeList(
+                attr("label", quote(replace(name, refBasePath, ""))),
+                attr("style", "filled"),
+                attr("fillcolor", fillColor),
+                attr("shape", shape),
+                attr("margin", margin)
+            )
+        ),
+        edge(quote(name), hash.trim()),
+    ];
+};
+
+const mapHeadToStatements = createRefMapper({
+    refBasePath: headPath,
+    shape: "rect",
+    fillColor: "lightblue",
+    margin: 0.1,
+});
+
+const mapTagToStatements = createRefMapper({
+    refBasePath: tagPath,
+    shape: "cds",
+    fillColor: "lightsalmon",
+    margin: 0.2,
+});
+
+module.exports = {
+    mapLineToObject,
+    mapLineToRef,
+    mapRawCommit,
+    mapRawTree,
+    mapAnnotatedTagsToStatements,
+    mapAnnotatedTag,
+    mapHeadToStatements,
+    mapTagToStatements,
+    mapTreeToStatements,
+    mapCommitToStatements,
+    mapBlobToStatement,
+};
