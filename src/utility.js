@@ -2,6 +2,8 @@ const _exec = require("child_process").exec;
 const { reduce } = require("lodash/collection");
 const { isArray } = require("lodash/lang");
 
+const arrayify = item => (Array.isArray(item) ? item : [item]);
+
 async function exec(...args) {
     return new Promise((resolve, reject) => {
         _exec(...args, (error, stdout, stderr) => {
@@ -29,12 +31,4 @@ function combineByKeys(array, keyProp, valueProp) {
     );
 }
 
-const splitLines = string => string.split("\n");
-const splitByWhitespace = string => string.match(/\S+/g);
-
-module.exports = {
-    exec,
-    combineByKeys,
-    splitLines,
-    splitByWhitespace,
-};
+module.exports = { arrayify, exec, combineByKeys };

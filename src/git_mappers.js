@@ -1,24 +1,10 @@
-const {
-    angles,
-    attr,
-    attributeList,
-    edge,
-    head8,
-    quote,
-    stmt,
-    table,
-    td,
-    tr,
-} = require("./dot_builders");
-const { truncate } = require("lodash/string");
-const { reduce } = require("lodash/collection");
-const { replace } = require("lodash/string");
-const { splitLines } = require("./utility");
-const { splitByWhitespace } = require("./utility");
-const { combineByKeys } = require("./utility");
-const { map } = require("lodash/collection");
-const { lines } = require("./dot_builders");
+const { table, tr, td } = require("./html_builders");
+const { attr, attrList, stmt, edge, lines } = require("./dot_builders");
+const { truncate, replace } = require("lodash/string");
+const { map, reduce } = require("lodash/collection");
 const { compact } = require("lodash/array");
+const { combineByKeys } = require("./utility");
+const { quote, splitLines, splitByWhitespace, brackets, angles, head8 } = require("./string_utils");
 
 const headPath = "refs/heads/";
 const tagPath = "refs/tags/";
@@ -75,7 +61,7 @@ const mapRawTree = rawTree => ({
 function mapBlobToStatement({ hash }) {
     return stmt(
         quote(hash),
-        attributeList(attr("label", quote(head8(hash))), attr("shape", "plaintext"))
+        attrList(attr("label", quote(head8(hash))), attr("shape", "plaintext"))
     );
 }
 
@@ -83,7 +69,7 @@ function mapCommitToStatements({ hash, parent, tree }) {
     const result = [
         stmt(
             quote(hash),
-            attributeList(
+            attrList(
                 attr("label", quote(head8(hash))),
                 attr("style", "filled"),
                 attr("fillcolor", "gainsboro"),
@@ -102,7 +88,7 @@ function mapAnnotatedTagsToStatements({ message, object, type, tag, hash }) {
     return [
         stmt(
             quote(hash),
-            attributeList(
+            attrList(
                 attr("label", quote(head8(hash) + "\n" + message)),
                 attr("shape", "rect"),
                 attr("style", "filled"),
@@ -114,7 +100,7 @@ function mapAnnotatedTagsToStatements({ message, object, type, tag, hash }) {
     ];
 }
 
-const mapTreeToStatements = ({ hash, children }) => {
+const mapTreeToStatements = ({ hash, children }, skipBlobs = false) => {
     const tableAttributes = [attr("border", 0), attr("cellborder", 1), attr("cellspacing", 0)];
     const rows = lines(
         tr(null, td(attr("colspan", 3), `tree ${head8(hash)}`)),
@@ -128,8 +114,10 @@ const mapTreeToStatements = ({ hash, children }) => {
     const treeHash = hash;
 
     return [
-        stmt(quote(treeHash), attributeList(...attributes)),
-        ...children.map(({ type, hash, filename }) => edge(quote(treeHash), hash)),
+        stmt(quote(treeHash), attrList(...attributes)),
+        ...children
+            .filter(({ type }) => !(skipBlobs && type === "blob"))
+            .map(({ type, hash, filename }) => edge(quote(treeHash), hash)),
     ];
 };
 
@@ -137,7 +125,7 @@ const createRefMapper = ({ refBasePath, fillColor, shape, margin }) => ({ hash, 
     return [
         stmt(
             quote(name),
-            attributeList(
+            attrList(
                 attr("label", quote(replace(name, refBasePath, ""))),
                 attr("style", "filled"),
                 attr("fillcolor", fillColor),
