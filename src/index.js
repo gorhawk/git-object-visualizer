@@ -55,8 +55,8 @@ async function main() {
     const gitObjectLines = compact(splitLines(await catAllObjects()));
     const gitObjects = map(gitObjectLines, mapLineToObject);
 
-    // sort out the three types of git objects,
-    // so we can further analyze the dependencies of commits, trees and tags
+    // sort out the 4 types of git objects,
+    // so we can further analyze the dependencies of commits, trees and annotated tags
     const blobs = filter(gitObjects, isBlob);
     const commits = filter(gitObjects, isCommit);
     const trees = filter(gitObjects, isTree);
