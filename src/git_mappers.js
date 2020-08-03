@@ -37,8 +37,13 @@ function mapLineToObject(line) {
 }
 
 function mapRawCommit(rawCommit) {
-    const dependencies = compact(map(compact(splitLines(rawCommit)), mapLineToCommit));
-    return combineByKeys(dependencies, "type", "hash");
+    // todo handle double newlines in commit message
+    const [meta, msg] = rawCommit.split("\n\n");
+    const dependencies = compact(map(compact(splitLines(meta)), mapLineToCommit));
+    return {
+        ...combineByKeys(dependencies, "type", "hash"),
+        // msg: msg.trim(),
+    };
 }
 
 function mapAnnotatedTag(rawTag) {
@@ -65,19 +70,21 @@ function mapBlobToStatement({ hash }) {
     );
 }
 
-function mapCommitToStatements({ hash, parent, tree }) {
+function mapCommitToStatements({ hash, parent, tree, msg }, skipTrees = false) {
     const result = [
         stmt(
             quote(hash),
             attrList(
-                attr("label", quote(head8(hash))),
+                attr("label", quote(head8(hash) + "\n" + msg)),
                 attr("style", "filled"),
                 attr("fillcolor", "gainsboro"),
                 attr("group", "commits")
             )
         ),
-        stmt(edge(quote(hash), tree)),
     ];
+    if (!skipTrees) {
+        result.push(stmt(edge(quote(hash), tree, "[style=dashed arrowhead=empty]")));
+    }
     if (parent) {
         result.push(stmt(edge(quote(hash), parent)));
     }
@@ -117,7 +124,9 @@ const mapTreeToStatements = ({ hash, children }, skipBlobs = false) => {
         stmt(quote(treeHash), attrList(...attributes)),
         ...children
             .filter(({ type }) => !(skipBlobs && type === "blob"))
-            .map(({ type, hash, filename }) => edge(quote(treeHash), hash)),
+            .map(({ type, hash, filename }) =>
+                edge(quote(treeHash), hash, "[style=dotted arrowhead=empty]")
+            ),
     ];
 };
 

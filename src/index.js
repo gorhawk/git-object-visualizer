@@ -44,6 +44,7 @@ const getHash = object => object.hash;
 const [gitDir, ...opts] = args.sort((a, b) => (a.startsWith("--") ? 1 : -1)); // sorry
 const git = `git --git-dir=${gitDir}`;
 const noBlobs = opts.includes("--no-blobs");
+const noTrees = opts.includes("--no-trees");
 
 const showHeads = () => exec(`${git} show-ref --heads`);
 const showTags = () => exec(`${git} show-ref --tags`);
@@ -97,13 +98,19 @@ async function main() {
     const HEAD = rawHEAD.startsWith("ref:") ? splitByWhitespace(rawHEAD)[1] : rawHEAD;
 
     // there may be no tags at all, which throws an I/O error
-    const tagData = map(compact(splitLines(await showTags().catch(error => ""))), mapLineToRef);
+    const tagErrorHandler = error => console.log("found no tags");
+    const tagData = map(compact(splitLines(await showTags().catch(tagErrorHandler))), mapLineToRef);
     const headData = map(compact(splitLines(await showHeads())), mapLineToRef);
 
+    /**
+     * TODO think more about what the command line options do,
+     *      eg.: tags can point to any object, not just commits
+     * @type {(Array|boolean|[string, string])[]}
+     */
     const statementsByType = [
-        !noBlobs && map(blobs, mapBlobToStatement),
-        map(commitData, mapCommitToStatements),
-        map(treeData, data => mapTreeToStatements(data, noBlobs)),
+        !noTrees && !noBlobs && map(blobs, mapBlobToStatement),
+        map(commitData, data => mapCommitToStatements(data, noTrees)),
+        !noTrees && map(treeData, data => mapTreeToStatements(data, noBlobs)),
         map(headData, mapHeadToStatements),
         mapHeadToStatements({ hash: HEAD, name: "HEAD" }),
         map(annotatedTagData, mapAnnotatedTagsToStatements),

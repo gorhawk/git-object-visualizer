@@ -17,7 +17,7 @@ const attrList = (...attributes) =>
     );
 
 const addressPort = (node, port) => `${node}:${port}`;
-const edge = (src, dest) => `${src} -> {${arrayify(dest).map(quote).join(" ")}}`;
+const edge = (src, dest, opts = "") => `${src} -> {${arrayify(dest).map(quote).join(" ")}} ${opts}`;
 
 module.exports = {
     attr,
