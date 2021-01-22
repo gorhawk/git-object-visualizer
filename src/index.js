@@ -1,4 +1,4 @@
-const fs = require("fs");
+const { readFileSync } = require("fs");
 const { flattenDepth, zipWith, compact } = require("lodash/array");
 const { exec } = require("./utility");
 const { splitLines, splitByWhitespace } = require("./string_utils");
@@ -23,8 +23,8 @@ const {
 const args = process.argv.slice(2);
 
 if (isEmpty(args)) {
-    console.log("No arguments given. (git-dir is required as first argument)");
-    process.exit(1);
+  console.log("No arguments given. (git-dir is required as first argument)");
+  process.exit(1);
 }
 
 const BLOB_TYPE = "blob";
@@ -53,54 +53,54 @@ const catFile = hash => exec(`${git} cat-file -p ${hash}`);
 const catObject = gitObject => catFile(getHash(gitObject));
 
 async function main() {
-    const gitObjectLines = compact(splitLines(await catAllObjects()));
-    const gitObjects = map(gitObjectLines, mapLineToObject);
+  const gitObjectLines = compact(splitLines(await catAllObjects()));
+  const gitObjects = map(gitObjectLines, mapLineToObject);
 
-    // sort out the 4 types of git objects,
-    // so we can further analyze the dependencies of commits, trees and annotated tags
-    const blobs = filter(gitObjects, isBlob);
-    const commits = filter(gitObjects, isCommit);
-    const trees = filter(gitObjects, isTree);
-    const tags = filter(gitObjects, isTag);
+  // sort out the 4 types of git objects,
+  // so we can further analyze the dependencies of commits, trees and annotated tags
+  const blobs = filter(gitObjects, isBlob);
+  const commits = filter(gitObjects, isCommit);
+  const trees = filter(gitObjects, isTree);
+  const tags = filter(gitObjects, isTag);
 
-    // additional git-cat-file commands need to be run for every object,
-    // and we represent these abstract I/O operations with collections of promises
-    const commitCatOps = map(commits, catObject);
-    const treeCatOps = map(trees, catObject);
-    const tagCatOps = map(tags, catObject);
+  // additional git-cat-file commands need to be run for every object,
+  // and we represent these abstract I/O operations with collections of promises
+  const commitCatOps = map(commits, catObject);
+  const treeCatOps = map(trees, catObject);
+  const tagCatOps = map(tags, catObject);
 
-    const rawCommits = await Promise.all(commitCatOps);
-    const rawTrees = await Promise.all(treeCatOps);
-    const rawTags = await Promise.all(tagCatOps);
+  const rawCommits = await Promise.all(commitCatOps);
+  const rawTrees = await Promise.all(treeCatOps);
+  const rawTags = await Promise.all(tagCatOps);
 
-    const addHashToObject = (hash, data) => ({ ...data, hash });
+  const addHashToObject = (hash, data) => ({ ...data, hash });
 
-    const commitData = zipWith(
-        map(commits, getHash),
-        compact(map(rawCommits, mapRawCommit)),
-        addHashToObject
-    );
+  const commitData = zipWith(
+    map(commits, getHash),
+    compact(map(rawCommits, mapRawCommit)),
+    addHashToObject
+  );
 
-    const treeData = zipWith(
-        map(trees, getHash),
-        compact(map(rawTrees, mapRawTree)),
-        addHashToObject
-    );
+  const treeData = zipWith(
+    map(trees, getHash),
+    compact(map(rawTrees, mapRawTree)),
+    addHashToObject
+  );
 
-    const annotatedTagData = zipWith(
-        map(tags, getHash),
-        compact(map(rawTags, mapAnnotatedTag)),
-        addHashToObject
-    );
+  const annotatedTagData = zipWith(
+    map(tags, getHash),
+    compact(map(rawTags, mapAnnotatedTag)),
+    addHashToObject
+  );
 
-    // git HEAD could be detached, referring directly to a commit, not another ref
-    const rawHEAD = fs.readFileSync(`${gitDir}/HEAD`).toString();
-    const HEAD = rawHEAD.startsWith("ref:") ? splitByWhitespace(rawHEAD)[1] : rawHEAD;
+  // git HEAD could be detached, referring directly to a commit, not another ref
+  const rawHEAD = readFileSync(`${gitDir}/HEAD`).toString();
+  const HEAD = rawHEAD.startsWith("ref:") ? splitByWhitespace(rawHEAD)[1] : rawHEAD;
 
-    // there may be no tags at all, which throws an I/O error
-    const tagErrorHandler = error => console.log("found no tags");
-    const tagData = map(compact(splitLines(await showTags().catch(tagErrorHandler))), mapLineToRef);
-    const headData = map(compact(splitLines(await showHeads())), mapLineToRef);
+  // there may be no tags at all, which throws an I/O error
+  const regularTags = await showTags().catch(error => {});
+  const tagData = regularTags ? map(compact(splitLines(regularTags)), mapLineToRef) : null;
+  const headData = map(compact(splitLines(await showHeads())), mapLineToRef);
 
     /**
      * TODO think more about what the command line options do,
@@ -108,6 +108,7 @@ async function main() {
      * @type {(Array|boolean|[string, string])[]}
      */
     const statementsByType = [
+        `ratio=${9/16}`,
         !noTrees && !noBlobs && map(blobs, mapBlobToStatement),
         map(commitData, data => mapCommitToStatements(data, noTrees)),
         !noTrees && map(treeData, data => mapTreeToStatements(data, noBlobs)),
@@ -116,6 +117,26 @@ async function main() {
         map(annotatedTagData, mapAnnotatedTagsToStatements),
         map(tagData, mapTagToStatements),
     ];
+
+  // const graph = new Digraph();
+  //
+  // blobs.forEach(({ hash }) => {
+  //   graph.addNode({
+  //     key: hash,
+  //     label: quote(head8(hash)),
+  //     shape: "plaintext",
+  //   });
+  // });
+  //
+  // commitData.forEach(({ hash, parent, tree, msg }) => {
+  //   graph.addNode({
+  //     key: hash,
+  //     label: quote(head8(hash) + "\\n" + msg),
+  //     style: "filled",
+  //     fillcolor: "gainsboro",
+  //     group: "commits",
+  //   });
+  // });
 
     const statements = flattenDepth(compact(statementsByType), 2);
 
