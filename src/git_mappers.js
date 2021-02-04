@@ -8,6 +8,7 @@ const { quote, splitLines, splitByWhitespace, brackets, angles, head8 } = requir
 
 const headPath = "refs/heads/";
 const tagPath = "refs/tags/";
+const remoteHeadPath = "refs/remotes/";
 
 const TREE_TYPE = "tree";
 const PARENT_TYPE = "parent";
@@ -84,8 +85,9 @@ function mapCommitToStatements({ hash, parent, tree, msg }, skipTrees = false) {
       quote(hash),
       attrList(
         // TODO: option to display msg, commit message (join with "\\n")
-        attr("label", quote(head8(hash))),
-        attr("style", "filled"),
+        attr("label", quote(head8(hash) + "\\n" + msg.substring(0, 25))),
+        attr("shape", "rect"),
+        attr("style", '"filled, rounded"'),
         attr("fillcolor", "gainsboro"),
         /**
          * TODO: make it optional to group commits
@@ -173,6 +175,13 @@ const mapHeadToStatements = createRefMapper({
   margin: 0.1,
 });
 
+const mapRemoteHeadToStatements = createRefMapper({
+  refBasePath: remoteHeadPath,
+  shape: "rect",
+  fillColor: "plum",
+  margin: 0.1,
+});
+
 const mapTagToStatements = createRefMapper({
   refBasePath: tagPath,
   shape: "cds",
@@ -189,6 +198,7 @@ module.exports = {
     mapAnnotatedTag,
     mapHeadToStatements,
     mapTagToStatements,
+    mapRemoteHeadToStatements,
     mapTreeToStatements,
     mapCommitToStatements,
     mapBlobToStatement,

@@ -6,17 +6,18 @@ const { isEmpty } = require("lodash/lang");
 const { map, filter } = require("lodash/collection");
 const { stmtList, digraph } = require("./dot_builders");
 const {
-    mapRawCommit,
-    mapRawTree,
-    mapAnnotatedTag,
-    mapLineToRef,
-    mapLineToObject,
-    mapBlobToStatement,
-    mapCommitToStatements,
-    mapTreeToStatements,
-    mapHeadToStatements,
-    mapAnnotatedTagsToStatements,
-    mapTagToStatements,
+  mapRawCommit,
+  mapRawTree,
+  mapAnnotatedTag,
+  mapLineToRef,
+  mapLineToObject,
+  mapBlobToStatement,
+  mapCommitToStatements,
+  mapTreeToStatements,
+  mapHeadToStatements,
+  mapRemoteHeadToStatements,
+  mapAnnotatedTagsToStatements,
+  mapTagToStatements,
 } = require("./git_mappers");
 
 // strip off node executable and script path
@@ -48,6 +49,7 @@ const noTrees = opts.includes("--no-trees");
 
 const showHeads = () => exec(`${git} show-ref --heads`);
 const showTags = () => exec(`${git} show-ref --tags`);
+const showRefs = () => exec(`${git} show-ref`);
 const catAllObjects = () => exec(`${git} cat-file --batch-check --batch-all-objects`);
 const catFile = hash => exec(`${git} cat-file -p ${hash}`);
 const catObject = gitObject => catFile(getHash(gitObject));
@@ -101,22 +103,27 @@ async function main() {
   const regularTags = await showTags().catch(error => {});
   const tagData = regularTags ? map(compact(splitLines(regularTags)), mapLineToRef) : null;
   const headData = map(compact(splitLines(await showHeads())), mapLineToRef);
+  const remoteHeadData = map(compact(splitLines(await showRefs())), mapLineToRef).filter(refData =>
+    refData.name.startsWith("refs/remotes/")
+  );
 
-    /**
-     * TODO think more about what the command line options do,
-     *      eg.: tags can point to any object, not just commits
-     * @type {(Array|boolean|[string, string])[]}
-     */
-    const statementsByType = [
-        `ratio=${9/16}`,
-        !noTrees && !noBlobs && map(blobs, mapBlobToStatement),
-        map(commitData, data => mapCommitToStatements(data, noTrees)),
-        !noTrees && map(treeData, data => mapTreeToStatements(data, noBlobs)),
-        map(headData, mapHeadToStatements),
-        mapHeadToStatements({ hash: HEAD, name: "HEAD" }),
-        map(annotatedTagData, mapAnnotatedTagsToStatements),
-        map(tagData, mapTagToStatements),
-    ];
+  /**
+   * TODO think more about what the command line options do,
+   *      eg.: tags can point to any object, not just commits
+   * @type {(Array|boolean|[string, string])[]}
+   */
+  const statementsByType = [
+    `ratio=${9 / 16}`,
+    `graph [dpi=192]`,
+    !noTrees && !noBlobs && map(blobs, mapBlobToStatement),
+    map(commitData, data => mapCommitToStatements(data, noTrees)),
+    !noTrees && map(treeData, data => mapTreeToStatements(data, noBlobs)),
+    map(headData, mapHeadToStatements),
+    map(remoteHeadData, mapRemoteHeadToStatements),
+    mapHeadToStatements({ hash: HEAD, name: "HEAD" }),
+    map(annotatedTagData, mapAnnotatedTagsToStatements),
+    map(tagData, mapTagToStatements),
+  ];
 
   // const graph = new Digraph();
   //
@@ -138,9 +145,9 @@ async function main() {
   //   });
   // });
 
-    const statements = flattenDepth(compact(statementsByType), 2);
+  const statements = flattenDepth(compact(statementsByType), 2);
 
-    return digraph("g", stmtList(statements));
+  return digraph("g", stmtList(statements));
 }
 
 module.exports = main;
