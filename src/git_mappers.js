@@ -3,7 +3,7 @@ const { attr, attrList, stmt, edge, lines } = require("./dot_builders");
 const { truncate, replace } = require("lodash/string");
 const { map, reduce } = require("lodash/collection");
 const { compact } = require("lodash/array");
-const { combineByKeys } = require("./utility");
+const { combineByKeys, arrayify } = require("./utility");
 const { quote, splitLines, splitByWhitespace, brackets, angles, head8 } = require("./string_utils");
 
 const headPath = "refs/heads/";
@@ -79,6 +79,9 @@ function mapBlobToStatement({ hash }) {
   return stmt(quote(hash), attrList(attr("label", quote(head8(hash))), attr("shape", "plaintext")));
 }
 
+const MERGE_COLOR = "gray";
+const COMMIT_COLOR = "gainsboro";
+
 function mapCommitToStatements({ hash, parent, tree, msg }, skipTrees = false) {
   const result = [
     stmt(
@@ -88,11 +91,11 @@ function mapCommitToStatements({ hash, parent, tree, msg }, skipTrees = false) {
         attr("label", quote(head8(hash) + "\\n" + msg.substring(0, 25))),
         attr("shape", "rect"),
         attr("style", '"filled, rounded"'),
-        attr("fillcolor", "gainsboro"),
+        attr("fillcolor", arrayify(parent).length > 1 ? MERGE_COLOR : COMMIT_COLOR)
         /**
          * TODO: make it optional to group commits
          * (so that the engine tries to form straight
-         * edges between them and avoid crossings) 
+         * edges between them and avoid crossings)
          */
         // attr("group", "commits")
       )
@@ -190,16 +193,16 @@ const mapTagToStatements = createRefMapper({
 });
 
 module.exports = {
-    mapLineToObject,
-    mapLineToRef,
-    mapRawCommit,
-    mapRawTree,
-    mapAnnotatedTagsToStatements,
-    mapAnnotatedTag,
-    mapHeadToStatements,
-    mapTagToStatements,
-    mapRemoteHeadToStatements,
-    mapTreeToStatements,
-    mapCommitToStatements,
-    mapBlobToStatement,
+  mapLineToObject,
+  mapLineToRef,
+  mapRawCommit,
+  mapRawTree,
+  mapAnnotatedTagsToStatements,
+  mapAnnotatedTag,
+  mapHeadToStatements,
+  mapTagToStatements,
+  mapRemoteHeadToStatements,
+  mapTreeToStatements,
+  mapCommitToStatements,
+  mapBlobToStatement,
 };
