@@ -97,9 +97,8 @@ async function main() {
     const rawHEAD = fs.readFileSync(`${gitDir}/HEAD`).toString();
     const HEAD = rawHEAD.startsWith("ref:") ? splitByWhitespace(rawHEAD)[1] : rawHEAD;
 
-    // there may be no tags at all, which throws an I/O error
-    const tagErrorHandler = error => console.log("found no tags");
-    const tagData = map(compact(splitLines(await showTags().catch(tagErrorHandler))), mapLineToRef);
+    // there may be no tags at all
+    const tagData = map(compact(splitLines(await showTags().catch(() => ""))), mapLineToRef);
     const headData = map(compact(splitLines(await showHeads())), mapLineToRef);
 
     /**
