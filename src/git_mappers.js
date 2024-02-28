@@ -37,12 +37,12 @@ function mapLineToObject(line) {
 }
 
 function mapRawCommit(rawCommit) {
-    // todo handle double newlines in commit message
-    const [meta, msg] = rawCommit.split("\n\n");
+    // ignore longer commit messages
+    const [meta, msg, ..._rest] = rawCommit.split("\n\n");
     const dependencies = compact(map(compact(splitLines(meta)), mapLineToCommit));
     return {
         ...combineByKeys(dependencies, "type", "hash"),
-        // msg: msg.trim(),
+        msg: msg.trim(),
     };
 }
 
