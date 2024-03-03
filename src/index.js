@@ -97,9 +97,9 @@ async function main() {
     const rawHEAD = fs.readFileSync(`${gitDir}/HEAD`).toString();
     const HEAD = rawHEAD.startsWith("ref:") ? splitByWhitespace(rawHEAD)[1] : rawHEAD;
 
-    // there may be no tags at all
+    // there may be no tags at all and a repo with no commits will have a floating main branch
     const tagData = map(compact(splitLines(await showTags().catch(() => ""))), mapLineToRef);
-    const headData = map(compact(splitLines(await showHeads())), mapLineToRef);
+    const headData = map(compact(splitLines(await showHeads().catch(() => ""))), mapLineToRef);
 
     /**
      * TODO think more about what the command line options do,
