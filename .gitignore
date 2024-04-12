@@ -2,6 +2,7 @@
 /node_modules
 npm-debug.log*
 
-./*.sh
-./*.gv
-./*.svg
+/*.sh
+/*.gv
+/*.svg
+/*.png

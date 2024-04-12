@@ -23,4 +23,4 @@ feh repo.png &
 
 Example PNG:
 
-![example generated png](https://raw.githubusercontent.com/gorhawk/git-object-visualizer/master/example.png)
+![example generated png](https://raw.githubusercontent.com/gorhawk/git-object-visualizer/master/doc/example.png)
