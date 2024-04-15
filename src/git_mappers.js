@@ -3,7 +3,7 @@ const { attr, attrList, stmt, edge, lines } = require("./dot_builders");
 const { truncate, replace } = require("lodash/string");
 const { map, reduce } = require("lodash/collection");
 const { compact } = require("lodash/array");
-const { combineByKeys } = require("./utility");
+const { combineByKeys, arrayify } = require("./utility");
 const { quote, splitLines, splitByWhitespace, brackets, angles, head8 } = require("./string_utils");
 
 const headPath = "refs/heads/";
@@ -86,7 +86,8 @@ function mapCommitToStatements({ hash, parent, tree, msg }, skipTrees = false) {
         result.push(stmt(edge(quote(hash), tree, "[style=dashed arrowhead=empty]")));
     }
     if (parent) {
-        result.push(stmt(edge(quote(hash), parent)));
+        // merge commits have more than one parent
+        arrayify(parent).forEach(value => result.push(stmt(edge(quote(hash), value))));
     }
     return result;
 }

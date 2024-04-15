@@ -21,12 +21,23 @@ async function exec(...args) {
 function combineByKeys(array, keyProp, valueProp) {
     return reduce(
         array,
-        (acc, element) => ({
-            ...acc,
-            [element[keyProp]]: isArray(acc[element[keyProp]])
-                ? [...acc[element[keyProp]], element[valueProp]]
-                : element[valueProp],
-        }),
+        (acc, element) => {
+            const key = element[keyProp];
+            const value = element[valueProp];
+            // default case, add value to object
+            if (!acc.hasOwnProperty(key)) {
+                acc[key] = value;
+                return acc;
+            }
+            // second value for the same key, initialize array
+            if (!isArray(acc[key])) {
+                acc[key] = [acc[key], value];
+                return acc;
+            }
+            // it's already an array
+            acc[key].push(value);
+            return acc;
+        },
         {}
     );
 }
