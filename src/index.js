@@ -3,7 +3,7 @@ const { flattenDepth, zipWith, compact } = require("lodash/array");
 const { exec } = require("./utility");
 const { splitLines, splitByWhitespace } = require("./string_utils");
 const { isEmpty } = require("lodash/lang");
-const { map, filter } = require("lodash/collection");
+const { map, filter, some } = require("lodash/collection");
 const { stmtList, digraph } = require("./dot_builders");
 const {
     mapRawCommit,
@@ -17,6 +17,7 @@ const {
     mapHeadToStatements,
     mapAnnotatedTagsToStatements,
     mapTagToStatements,
+    mapRefsToStatements,
 } = require("./git_mappers");
 
 // strip off node executable and script path
@@ -46,8 +47,7 @@ const git = `git --git-dir=${gitDir}`;
 const noBlobs = opts.includes("--no-blobs");
 const noTrees = opts.includes("--no-trees");
 
-const showHeads = () => exec(`${git} show-ref --heads`);
-const showTags = () => exec(`${git} show-ref --tags`);
+const showRefs = () => exec(`${git} show-ref`);
 const catAllObjects = () => exec(`${git} cat-file --batch-check --batch-all-objects`);
 const catFile = hash => exec(`${git} cat-file -p ${hash}`);
 const catObject = gitObject => catFile(getHash(gitObject));
@@ -97,9 +97,15 @@ async function main() {
     const rawHEAD = fs.readFileSync(`${gitDir}/HEAD`).toString();
     const HEAD = rawHEAD.startsWith("ref:") ? splitByWhitespace(rawHEAD)[1] : rawHEAD;
 
-    // there may be no tags at all and a repo with no commits will have a floating main branch
-    const tagData = map(compact(splitLines(await showTags().catch(() => ""))), mapLineToRef);
-    const headData = map(compact(splitLines(await showHeads().catch(() => ""))), mapLineToRef);
+    // perfectly alright to have no refs at all (empty repo)
+    const refData = map(compact(splitLines(await showRefs().catch(() => ""))), mapLineToRef);
+
+    // Only draw HEAD if it points to a ref that exists
+    const validHead = some(refData, (ref) => HEAD === ref.name);
+
+    const tagData = filter(refData, (ref) => ref.name.includes("/tags/"));
+    const headData = filter(refData, (ref) => ref.name.includes("/heads/"));
+    const miscRefData = filter(refData, (ref) => !ref.name.includes("/tags/") && !ref.name.includes("/heads/"));
 
     /**
      * TODO think more about what the command line options do,
@@ -111,9 +117,10 @@ async function main() {
         map(commitData, data => mapCommitToStatements(data, noTrees)),
         !noTrees && map(treeData, data => mapTreeToStatements(data, noBlobs)),
         map(headData, mapHeadToStatements),
-        mapHeadToStatements({ hash: HEAD, name: "HEAD" }),
-        map(annotatedTagData, mapAnnotatedTagsToStatements),
         map(tagData, mapTagToStatements),
+        map(miscRefData, mapRefsToStatements),
+        validHead && mapHeadToStatements({ hash: HEAD, name: "HEAD" }),
+        map(annotatedTagData, mapAnnotatedTagsToStatements),
     ];
 
     const statements = flattenDepth(compact(statementsByType), 2);
