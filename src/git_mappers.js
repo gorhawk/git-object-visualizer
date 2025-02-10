@@ -161,6 +161,13 @@ const mapTagToStatements = createRefMapper({
     margin: 0.2,
 });
 
+const mapRefsToStatements = createRefMapper({
+    refBasePath: "refs/",
+    shape: "cds",
+    fillColor: "orange",
+    margin: 0.1,
+});
+
 module.exports = {
     mapLineToObject,
     mapLineToRef,
@@ -170,6 +177,7 @@ module.exports = {
     mapAnnotatedTag,
     mapHeadToStatements,
     mapTagToStatements,
+    mapRefsToStatements,
     mapTreeToStatements,
     mapCommitToStatements,
     mapBlobToStatement,
