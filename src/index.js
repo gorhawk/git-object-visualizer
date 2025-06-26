@@ -94,14 +94,15 @@ async function main() {
     );
 
     // git HEAD could be detached, referring directly to a commit, not another ref
-    const rawHEAD = fs.readFileSync(`${gitDir}/HEAD`).toString();
+    const rawHEAD = fs.readFileSync(`${gitDir}/HEAD`).toString().trim();
     const HEAD = rawHEAD.startsWith("ref:") ? splitByWhitespace(rawHEAD)[1] : rawHEAD;
 
     // perfectly alright to have no refs at all (empty repo)
     const refData = map(compact(splitLines(await showRefs().catch(() => ""))), mapLineToRef);
 
-    // Only draw HEAD if it points to a ref that exists
-    const validHead = some(refData, (ref) => HEAD === ref.name);
+    // Only draw HEAD if it points to a ref or commit that exists
+    const refsAndCommits = refData.concat(commitData);
+    const validHead = some(refsAndCommits, (obj) => HEAD === obj.name || HEAD === obj.hash);
 
     const tagData = filter(refData, (ref) => ref.name.includes("/tags/"));
     const headData = filter(refData, (ref) => ref.name.includes("/heads/"));
